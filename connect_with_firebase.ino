@@ -2,20 +2,24 @@
 //#include <LCD.h>
 #include<MQ2.h>
 #include <ESP8266WiFi.h>
-#include <LiquidCrystal_SR.h>
+#include <Wire.h> 
+#include <LiquidCrystal_I2C.h>
+//#include <LiquidCrystal_SR.h>
 //#include <LiquidCrystal.h>
 #include<DHT.h>
 #define HOST "gasleakage-b6005.firebaseio.com"
 #define AUTH "oafrzUMv1vrm4NhZnqN2BPTUqB5jfkh4r0l1xP6m"
 #define DHTPIN 13
+#define BUZZER 2
 #define DHTTYPE DHT11
-long MQ_PIN=A0;
+long MQ_PIN = A0;
 int lpg, co, smoke;
 float h, t;
 
 DHT dht(DHTPIN, DHTTYPE);
 MQ2 mq2(MQ_PIN);
-LiquidCrystal_SR lcd(16, 5, 4);
+//LiquidCrystal_SR lcd(16, 5, 4);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 //Data,clock,Letch
 
 
@@ -36,7 +40,7 @@ void setup() {
   dht.begin();
   mq2.begin();
 
-  lcd.begin(16, 2); // set up the LCD's number of columns and rows:
+  lcd.begin(); // set up the LCD's number of columns and rows:
   lcd.clear(); // clear the screen
 }
 
@@ -76,11 +80,17 @@ void readingData() {
   lpg = mq2.readLPG();
   co = mq2.readCO();
   smoke = mq2.readSmoke();
+  if(lpg>=5){
+    analogWrite(BUZZER,1000);
+  }
+  else{
+    analogWrite(BUZZER,0);
+  }
   delay(1000);
   /*digitalWrite(2, LOW);
-  if (lpg >= 1000) {
+    if (lpg >= 1000) {
     digitalWrite(2, HIGH);
-  }*/
+    }*/
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print((String)"LPG: " + lpg + "  CO: " + co);
@@ -127,6 +137,13 @@ void uploadData() {
   }
   Serial.println((String)"HUm: " + h);
   Firebase.setFloat("Hum", h);
+  if (Firebase.failed()) {
+    Serial.println("Failed to write the data");
+    Serial.println(Firebase.error());
+
+  }
+  Serial.println((String)"Date: ");
+  Firebase.setInt("lastUpdate", millis());
   if (Firebase.failed()) {
     Serial.println("Failed to write the data");
     Serial.println(Firebase.error());
